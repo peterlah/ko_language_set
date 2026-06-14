@@ -46,14 +46,14 @@ if (-not (Test-Path $marker)) {
 }
 '@ | Set-Content -Path $perUser -Encoding UTF8
 
-$action    = New-ScheduledTaskAction -Execute 'powershell.exe' `
-    -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$perUser`""
+# 백틱 줄바꿈을 쓰지 않도록 인자를 미리 만들어 한 줄로 호출 (LF 줄바꿈에서도 안전)
+$taskArg   = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $perUser + '"'
+$action    = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $taskArg
 $trigger   = New-ScheduledTaskTrigger -AtLogOn
 $principal = New-ScheduledTaskPrincipal -GroupId 'BUILTIN\Users' -RunLevel Limited
-Register-ScheduledTask -TaskName 'Apply-KoreanLanguage' `
-    -Action $action -Trigger $trigger -Principal $principal -Force
+Register-ScheduledTask -TaskName 'Apply-KoreanLanguage' -Action $action -Trigger $trigger -Principal $principal -Force
 
 Write-Host ''
 Write-Host '완료. 재부팅 후 로그온하면 한국어 UI가 적용됩니다.'
-# 자동화 파이프라인에서 즉시 재부팅하려면 아래 주석 해제:
-Restart-Computer -Force
+# 자동 재부팅은 권장하지 않음 (CSE 실행 중 재부팅하면 확장이 실패로 보고됨).
+# 확장 성공 후 az vm restart 로 따로 재부팅하세요.
