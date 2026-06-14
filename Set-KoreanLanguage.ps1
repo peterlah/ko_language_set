@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+햐#Requires -RunAsAdministrator
 <#
   Set-KoreanLanguage.ps1
   Azure Windows 11 Pro (영어 이미지) -> 한국어 자동 적용
@@ -11,6 +11,7 @@
 
   요구사항: 관리자 권한, 인터넷 연결(언어팩 다운로드)
   적용 완료 후 재부팅 필요
+  (here-string/백틱은 LF 줄바꿈에서 깨질 수 있어 의도적으로 사용하지 않음)
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -35,18 +36,20 @@ Copy-UserInternationalSettingsToSystem -WelcomeScreen $true -NewUser $true
 
 Write-Host '== 로그온 사용자용 1회 적용 작업 등록 =='
 $perUser = 'C:\ProgramData\Set-KoreanForUser.ps1'
-@'
-$marker = 'HKCU:\Software\KoreanLangApplied'
-if (-not (Test-Path $marker)) {
-    Set-WinUILanguageOverride -Language ko-KR
-    Set-WinUserLanguageList (New-WinUserLanguageList 'ko-KR') -Force
-    Set-Culture ko-KR
-    Set-WinHomeLocation -GeoId 134
-    New-Item -Path $marker -Force | Out-Null
-}
-'@ | Set-Content -Path $perUser -Encoding UTF8
 
-# 백틱 줄바꿈을 쓰지 않도록 인자를 미리 만들어 한 줄로 호출 (LF 줄바꿈에서도 안전)
+# here-string 대신 문자열 배열로 작성 (줄바꿈 형식에 영향 없음)
+$perUserContent = @(
+    '$marker = ''HKCU:\Software\KoreanLangApplied''',
+    'if (-not (Test-Path $marker)) {',
+    '    Set-WinUILanguageOverride -Language ko-KR',
+    '    Set-WinUserLanguageList (New-WinUserLanguageList ''ko-KR'') -Force',
+    '    Set-Culture ko-KR',
+    '    Set-WinHomeLocation -GeoId 134',
+    '    New-Item -Path $marker -Force | Out-Null',
+    '}'
+)
+Set-Content -Path $perUser -Value $perUserContent -Encoding UTF8
+
 $taskArg   = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $perUser + '"'
 $action    = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $taskArg
 $trigger   = New-ScheduledTaskTrigger -AtLogOn
